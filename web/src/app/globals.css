@@ -1,0 +1,6 @@
+/* MUI's <CssBaseline /> handles the reset (margins, box-sizing, base colors).
+   Keep this file minimal; the dark/light palette is driven by the MUI theme. */
+html,
+body {
+  height: 100%;
+}
