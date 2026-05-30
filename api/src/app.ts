@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import { healthRoutes } from './routes/health';
 import { userRoutes } from './routes/users';
 import { deviceRoutes } from './routes/devices';
+import { alertRoutes } from './routes/alerts';
 import { AppError, errorBody } from './errors';
 import type { AuthedUser } from './auth';
 
@@ -39,6 +40,7 @@ export function buildApp(): FastifyInstance {
   app.register(healthRoutes);
   app.register(userRoutes);
   app.register(deviceRoutes);
+  app.register(alertRoutes);
 
   return app;
 }
