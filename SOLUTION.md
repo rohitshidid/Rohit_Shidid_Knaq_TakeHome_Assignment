@@ -33,4 +33,5 @@ _TBD_
 
 ## Miscellaneous notes
 -  I use mac and have docker desktop installed and running, because macOS cannot run Docker natively, opening the app starts a required hidden Linux virtual machine in the background that actually runs your containers.
+- I have created a homebrew tap which is available at: https://github.com/rohitshidid/Homebrew-portman (I'm a bit of a homebrew fanboy), it basically helps you see all active ports on your machine in one screen, it helps quite a lot when you are working with docker and/or kubernetes, helped me track progress as I was developing this application. (you can also use `brew install portmap` to install it)
 
