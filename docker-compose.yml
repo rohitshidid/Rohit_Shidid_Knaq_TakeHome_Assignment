@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: knaq-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-knaq}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-knaq_dev_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-knaq}
+    ports:
+      - "5432:5432"
+    volumes:
+      - knaq_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-knaq} -d ${POSTGRES_DB:-knaq}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  knaq_pgdata:
