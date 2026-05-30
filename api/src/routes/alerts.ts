@@ -3,6 +3,8 @@ import { prisma } from '../db';
 import { authenticate } from '../auth';
 import { AppError } from '../errors';
 import { Prisma } from '../generated/prisma/client';
+import { z } from 'zod';
+import { acknowledgeAlert, assignAlert, resolveAlert, addNote } from '../services/triage';
 
 const SEVERITIES = ['warning', 'critical'] as const;
 const STATUSES = ['new', 'acknowledged', 'resolved', 'dismissed'] as const;
@@ -35,6 +37,21 @@ const alertInclude = {
   device: { select: { id: true, name: true, location: true, type: true, company: true } },
   assignedTo: { select: { id: true, name: true, role: true } },
 } satisfies Prisma.AlertInclude;
+
+// Request-body schemas for the mutations.
+const assignBody = z.object({ assignee_id: z.string().min(1), note: z.string().optional() });
+const resolveBody = z.object({
+  resolution_type: z.enum(['fixed', 'false_alarm', 'known_issue', 'deferred', 'cannot_reproduce']),
+  root_cause: z.string().min(1),
+  action_taken: z.string().min(1),
+  preventive_measures: z.string().optional(),
+  time_spent_minutes: z.number().int().nonnegative().optional(),
+});
+const noteBody = z.object({ note: z.string().min(1) });
+
+function zodMsg(err: z.ZodError): string {
+  return err.issues.map((i) => `${i.path.join('.') || '(body)'}: ${i.message}`).join('; ');
+}
 
 export async function alertRoutes(app: FastifyInstance): Promise<void> {
   app.get('/alerts', { preHandler: authenticate }, async (request) => {
@@ -97,5 +114,39 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
     });
     if (!alert) throw new AppError(404, 'not_found', `Alert '${id}' not found`);
     return alert;
+  });
+
+  // --- Triage mutations: return the updated alert, enforce transitions server-side ---
+
+  app.post('/alerts/:id/acknowledge', { preHandler: authenticate }, async (request) => {
+    const { id } = request.params as { id: string };
+    return acknowledgeAlert(id, request.user);
+  });
+
+  app.post('/alerts/:id/assign', { preHandler: authenticate }, async (request) => {
+    const { id } = request.params as { id: string };
+    const body = assignBody.safeParse(request.body);
+    if (!body.success) throw new AppError(400, 'bad_request', zodMsg(body.error));
+    return assignAlert(id, request.user, { assigneeId: body.data.assignee_id, note: body.data.note });
+  });
+
+  app.post('/alerts/:id/resolve', { preHandler: authenticate }, async (request) => {
+    const { id } = request.params as { id: string };
+    const body = resolveBody.safeParse(request.body);
+    if (!body.success) throw new AppError(400, 'bad_request', zodMsg(body.error));
+    return resolveAlert(id, request.user, {
+      resolutionType: body.data.resolution_type,
+      rootCause: body.data.root_cause,
+      actionTaken: body.data.action_taken,
+      preventiveMeasures: body.data.preventive_measures,
+      timeSpentMinutes: body.data.time_spent_minutes,
+    });
+  });
+
+  app.post('/alerts/:id/notes', { preHandler: authenticate }, async (request) => {
+    const { id } = request.params as { id: string };
+    const body = noteBody.safeParse(request.body);
+    if (!body.success) throw new AppError(400, 'bad_request', zodMsg(body.error));
+    return addNote(id, request.user, body.data.note);
   });
 }
