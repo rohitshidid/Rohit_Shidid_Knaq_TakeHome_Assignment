@@ -3,6 +3,7 @@
 Design decisions, trade-offs, and AI-tool disclosure. Filled in as the build
 progresses so the reasoning is captured while it's fresh.
 
+
 ## Storage choice & schema
 _TBD_
 
@@ -29,3 +30,7 @@ _TBD_
 
 ## AI tool disclosure
 _TBD_
+
+## Miscellaneous notes
+-  I use mac and have docker desktop installed and running, because macOS cannot run Docker natively, opening the app starts a required hidden Linux virtual machine in the background that actually runs your containers.
+
