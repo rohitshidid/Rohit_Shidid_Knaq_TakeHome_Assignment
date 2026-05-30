@@ -3,7 +3,7 @@ import { healthRoutes } from './routes/health';
 
 /**
  * Build a fully-wired Fastify instance WITHOUT starting it.
- * Keeping construction separate from listening lets tests (Phase 5.3)
+ * Keeping construction separate from listening lets tests
  * use `app.inject()` against an in-memory instance — no real port needed.
  */
 export function buildApp(): FastifyInstance {

@@ -8,34 +8,39 @@ import {
   type RawMessage,
   type DeviceInfo,
   type Normalized,
+  type NormalizedReading,
 } from './validate';
+import { storeReadings, type ReadingStoreResult } from './readings';
 
 // api/src/ingest → repo-root/data/sensor_messages.json (three levels up)
 const here = dirname(fileURLToPath(import.meta.url));
 const messagesPath = resolve(here, '../../../data/sensor_messages.json');
 
-async function loadDeviceMap(): Promise<Map<string, DeviceInfo>> {
-  const devices = await prisma.device.findMany({ select: { id: true, readingTypes: true } });
-  return new Map(devices.map((d) => [d.id, { readingTypes: d.readingTypes }]));
-}
-
 export async function runIngest(): Promise<void> {
   const raw = JSON.parse(readFileSync(messagesPath, 'utf8')) as RawMessage[];
 
-  const devices = await loadDeviceMap();
-  if (devices.size === 0) {
+  const devicesRaw = await prisma.device.findMany({
+    select: { id: true, readingTypes: true, alertThresholds: true },
+  });
+  if (devicesRaw.length === 0) {
     throw new Error('No devices in the DB — run `npm run seed` before ingest.');
   }
+  // Two views of the same registry: what the validator needs, and thresholds.
+  const deviceInfo = new Map<string, DeviceInfo>(
+    devicesRaw.map((d) => [d.id, { readingTypes: d.readingTypes }]),
+  );
+  const thresholdsByDevice = new Map<string, Record<string, number>>(
+    devicesRaw.map((d) => [d.id, d.alertThresholds as Record<string, number>]),
+  );
 
-  // Idempotency: clear the previous run's dead-letter rows. (Valid rows will
-  // dedup on their content hash when we store them in 1.4 / 1.5.)
+  // Idempotency: clear the previous run's dead-letter rows.
   await prisma.rejectedMessage.deleteMany({});
 
   const valid: Normalized[] = [];
   const rejected: { raw: RawMessage; reason: string }[] = [];
 
   for (const msg of raw) {
-    const result = validateMessage(msg, devices);
+    const result = validateMessage(msg, deviceInfo);
     if (result.ok) valid.push(result.value);
     else rejected.push({ raw: msg, reason: result.reason });
   }
@@ -52,16 +57,20 @@ export async function runIngest(): Promise<void> {
     });
   }
 
-  // TODO (1.4): store readings — dedup on content hash + flag threshold breaches.
-  // TODO (1.5): store alerts + link recoveries to open alerts.
+  // Store readings (dedup + breach flag).
+  const readings = valid.filter((v): v is NormalizedReading => v.kind === 'reading');
+  const readingResult = await storeReadings(readings, thresholdsByDevice);
 
-  printSummary(raw.length, valid, rejected);
+  // TODO: later — store alerts + link recoveries to open alerts.
+
+  printSummary(raw.length, valid, rejected, readingResult);
 }
 
 function printSummary(
   total: number,
   valid: Normalized[],
   rejected: { reason: string }[],
+  readingResult: ReadingStoreResult,
 ): void {
   const readings = valid.filter((v) => v.kind === 'reading').length;
   const alerts = valid.filter((v) => v.kind === 'alert').length;
@@ -80,4 +89,7 @@ function printSummary(
       console.log(`    ${count} x  ${reason}`);
     }
   }
+  console.log(
+    `  readings rows  : stored ${readingResult.stored}, deduped ${readingResult.deduped}, breaches ${readingResult.breaches}`,
+  );
 }

@@ -1,8 +1,8 @@
 import { createTheme } from '@mui/material/styles';
 
 /**
- * Brand palette from the assignment. The dark/light toggle arrives in
- * Segment 3.2 — for now a single light theme proves MUI theming is wired.
+ * Brand palette from the assignment. A single light theme for now; the
+ * dark/light toggle is added later.
  */
 export const theme = createTheme({
   palette: {

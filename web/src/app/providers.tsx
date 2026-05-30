@@ -8,7 +8,7 @@ import { theme } from '@/lib/theme/theme';
 
 /**
  * Client-side provider stack. Lives in its own 'use client' module so the
- * root layout can stay a Server Component. Redux's <Provider> joins here in 3.1.
+ * root layout can stay a Server Component. Redux's <Provider> is added here later.
  *
  * - AppRouterCacheProvider: collects Emotion styles on the server and flushes
  *   them into the streamed HTML, so MUI renders without a flash of unstyled UI.
