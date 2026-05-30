@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { API_URL, API_TOKEN } from '@/lib/config';
+import { API_URL } from '@/lib/config';
 import type { Alert } from '@/features/alerts/types';
 import type { Device } from '@/features/devices/types';
 import type { User } from '@/features/users/types';
@@ -12,8 +12,10 @@ export const api = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
     baseUrl: API_URL,
-    prepareHeaders: (headers) => {
-      headers.set('Authorization', `Bearer ${API_TOKEN}`);
+    prepareHeaders: (headers, apiCtx) => {
+      // Read the current user's token from the store (set by the UserSwitcher).
+      const state = apiCtx.getState() as { auth: { token: string } };
+      headers.set('Authorization', `Bearer ${state.auth.token}`);
       return headers;
     },
   }),

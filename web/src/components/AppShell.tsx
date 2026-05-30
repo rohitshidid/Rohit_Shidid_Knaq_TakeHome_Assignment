@@ -11,6 +11,7 @@ import Container from '@mui/material/Container';
 import DarkModeIcon from '@mui/icons-material/DarkModeOutlined';
 import LightModeIcon from '@mui/icons-material/LightModeOutlined';
 import { useColorMode } from '@/lib/theme/ColorModeContext';
+import { UserSwitcher } from '@/features/auth/components/UserSwitcher';
 
 /** Top nav + page container. Holds the brand wordmark and the theme toggle. */
 export function AppShell({ children }: { children: ReactNode }) {
@@ -27,6 +28,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             Knaq
           </Typography>
+          <UserSwitcher />
           <Tooltip title={mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}>
             <IconButton onClick={toggle} color="inherit" aria-label="toggle color mode">
               {mode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
