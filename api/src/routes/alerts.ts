@@ -82,4 +82,20 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
       orderBy: [{ severity: 'desc' }, { triggeredAt: 'desc' }], // critical first, newest first
     });
   });
+
+  app.get('/alerts/:id', { preHandler: authenticate }, async (request) => {
+    const { id } = request.params as { id: string };
+    const alert = await prisma.alert.findFirst({
+      where: { id, company: request.user.company },
+      include: {
+        device: {
+          select: { id: true, name: true, location: true, type: true, company: true, timezone: true },
+        },
+        assignedTo: { select: { id: true, name: true, role: true } },
+        timeline: { orderBy: { timestamp: 'asc' } },
+      },
+    });
+    if (!alert) throw new AppError(404, 'not_found', `Alert '${id}' not found`);
+    return alert;
+  });
 }
