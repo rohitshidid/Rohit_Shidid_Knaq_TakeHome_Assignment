@@ -17,5 +17,35 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: ./api
+    container_name: knaq-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Inside the compose network the DB host is the service name "db".
+      DATABASE_URL: postgresql://${POSTGRES_USER:-knaq}:${POSTGRES_PASSWORD:-knaq_dev_pw}@db:5432/${POSTGRES_DB:-knaq}?schema=public
+      API_PORT: "8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      # Provide the source messages to seed/ingest (read-only).
+      - ./data:/app/data:ro
+
+  web:
+    build:
+      context: ./web
+    container_name: knaq-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    # The browser (on the host) calls the API at localhost:8000, which the
+    # default NEXT_PUBLIC_API_URL already points to — no extra config needed.
+
 volumes:
   knaq_pgdata:
