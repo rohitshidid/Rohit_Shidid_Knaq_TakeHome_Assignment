@@ -19,6 +19,7 @@ import { Timeline } from './Timeline';
 import { AlertActions } from './AlertActions';
 import { ResolveDialog } from './ResolveDialog';
 import { AssignDialog } from './AssignDialog';
+import { AddNoteForm } from './AddNoteForm';
 import { titleForAlert, relativeTime, initials } from '@/features/alerts/lib/format';
 import type { Alert } from '@/features/alerts/types';
 
@@ -132,6 +133,7 @@ export function AlertDetailView({ alert }: { alert: Alert }) {
           <Box sx={{ mt: 2 }}>
             <Timeline events={alert.timeline ?? []} />
           </Box>
+          <AddNoteForm alertId={alert.id} onError={setError} />
         </CardContent>
       </Card>
 

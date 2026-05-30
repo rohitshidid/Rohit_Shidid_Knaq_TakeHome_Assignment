@@ -10,6 +10,7 @@ import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
 import Snackbar from '@mui/material/Snackbar';
 import { useGetAlertsQuery } from '@/lib/api/apiSlice';
+import { isAuthError } from '@/lib/api/error';
 import { AlertTable } from '@/features/alerts/components/AlertTable';
 import { SummaryBar } from '@/features/alerts/components/SummaryBar';
 import { QueueFilters } from '@/features/alerts/components/QueueFilters';
@@ -28,7 +29,7 @@ function EmptyPaper({ title, body }: { title: string; body: string }) {
 }
 
 export default function AlertsPage() {
-  const { data, isLoading, isError, refetch } = useGetAlertsQuery();
+  const { data, isLoading, isError, error: queryError, refetch } = useGetAlertsQuery();
   const [error, setError] = useState<string | null>(null);
   const all = data ?? [];
   const filtered = useFilteredAlerts(all);
@@ -50,18 +51,23 @@ export default function AlertsPage() {
         </Stack>
       )}
 
-      {isError && (
-        <MuiAlert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={() => void refetch()}>
-              Retry
-            </Button>
-          }
-        >
-          Couldn&apos;t load alerts — is the API running on :8000?
-        </MuiAlert>
-      )}
+      {isError &&
+        (isAuthError(queryError) ? (
+          <MuiAlert severity="warning">
+            Authentication failed — your token is invalid. Switch user from the top bar.
+          </MuiAlert>
+        ) : (
+          <MuiAlert
+            severity="error"
+            action={
+              <Button color="inherit" size="small" onClick={() => void refetch()}>
+                Retry
+              </Button>
+            }
+          >
+            Couldn&apos;t load alerts — is the API running on :8000?
+          </MuiAlert>
+        ))}
 
       {data && (
         <>

@@ -10,11 +10,12 @@ import Button from '@mui/material/Button';
 import ArrowBackIcon from '@mui/icons-material/ArrowBackIosNew';
 import Link from 'next/link';
 import { useGetAlertQuery } from '@/lib/api/apiSlice';
+import { isAuthError } from '@/lib/api/error';
 import { AlertDetailView } from '@/features/alerts/components/AlertDetailView';
 
 export default function AlertDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params); // Next 16: params is async
-  const { data, isLoading, isError } = useGetAlertQuery(id);
+  const { data, isLoading, isError, error } = useGetAlertQuery(id);
 
   if (isLoading) {
     return (
@@ -40,8 +41,17 @@ export default function AlertDetailPage({ params }: { params: Promise<{ id: stri
         </Button>
         <Paper variant="outlined" sx={{ p: 6 }}>
           <Box sx={{ textAlign: 'center', color: 'text.secondary' }}>
-            <Typography variant="h6">Alert not found</Typography>
-            <Typography variant="body2">It may belong to another company, or no longer exist.</Typography>
+            {isAuthError(error) ? (
+              <>
+                <Typography variant="h6">Authentication failed</Typography>
+                <Typography variant="body2">Your token is invalid — switch user from the top bar.</Typography>
+              </>
+            ) : (
+              <>
+                <Typography variant="h6">Alert not found</Typography>
+                <Typography variant="body2">It may belong to another company, or no longer exist.</Typography>
+              </>
+            )}
           </Box>
         </Paper>
       </Stack>

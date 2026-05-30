@@ -19,6 +19,8 @@ export const DEMO_USERS: DemoUser[] = [
   { name: 'Dan Okafor', role: 'Field Technician', company: 'Hines', token: 'tok_dan_hines' },
   { name: 'Emi Tanaka', role: 'Building Manager', company: 'Mitsui Fudosan', token: 'tok_emi_mitsui' },
   { name: 'Frank Mueller', role: 'Field Technician', company: 'Mitsui Fudosan', token: 'tok_frank_mitsui' },
+  // Not a seeded token — selecting this triggers a real 401 to demo the auth UX.
+  { name: 'Unauthorized', role: 'Invalid token — 401 demo', company: 'No company', token: 'tok_unauthorized_demo' },
 ];
 
 export const DEFAULT_USER: DemoUser =
