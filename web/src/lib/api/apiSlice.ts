@@ -73,6 +73,11 @@ export const api = createApi({
       query: ({ id, note }) => ({ url: `/alerts/${id}/notes`, method: 'POST', body: { note } }),
       invalidatesTags: (_r, _e, { id }) => [{ type: 'Alert', id }, { type: 'Alert', id: 'LIST' }],
     }),
+
+    // Testing helper — resets the DB to default values (see api /dev/reset).
+    resetDatabase: build.mutation<{ ok: boolean; message: string }, void>({
+      query: () => ({ url: '/dev/reset', method: 'POST' }),
+    }),
   }),
 });
 
@@ -85,4 +90,5 @@ export const {
   useAssignAlertMutation,
   useResolveAlertMutation,
   useAddNoteMutation,
+  useResetDatabaseMutation,
 } = api;

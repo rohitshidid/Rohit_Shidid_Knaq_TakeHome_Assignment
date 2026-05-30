@@ -14,6 +14,7 @@ import { AlertTable } from '@/features/alerts/components/AlertTable';
 import { SummaryBar } from '@/features/alerts/components/SummaryBar';
 import { QueueFilters } from '@/features/alerts/components/QueueFilters';
 import { useFilteredAlerts } from '@/features/alerts/hooks/useFilteredAlerts';
+import { ResetButton } from '@/features/dev/components/ResetButton';
 
 function EmptyPaper({ title, body }: { title: string; body: string }) {
   return (
@@ -34,9 +35,12 @@ export default function AlertsPage() {
 
   return (
     <Stack spacing={2}>
-      <Typography variant="h5" sx={{ fontWeight: 700 }}>
-        Alert Queue
-      </Typography>
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          Alert Queue
+        </Typography>
+        <ResetButton />
+      </Stack>
 
       {isLoading && (
         <Stack spacing={1}>

@@ -4,6 +4,7 @@ import { healthRoutes } from './routes/health';
 import { userRoutes } from './routes/users';
 import { deviceRoutes } from './routes/devices';
 import { alertRoutes } from './routes/alerts';
+import { devRoutes } from './routes/dev';
 import { AppError, errorBody } from './errors';
 import type { AuthedUser } from './auth';
 
@@ -41,6 +42,7 @@ export function buildApp(): FastifyInstance {
   app.register(userRoutes);
   app.register(deviceRoutes);
   app.register(alertRoutes);
+  app.register(devRoutes);
 
   return app;
 }
