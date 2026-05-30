@@ -9,8 +9,10 @@ import {
   type DeviceInfo,
   type Normalized,
   type NormalizedReading,
+  type NormalizedAlert,
 } from './validate';
 import { storeReadings, type ReadingStoreResult } from './readings';
+import { storeAlerts, type AlertStoreResult } from './alerts';
 
 // api/src/ingest → repo-root/data/sensor_messages.json (three levels up)
 const here = dirname(fileURLToPath(import.meta.url));
@@ -20,18 +22,18 @@ export async function runIngest(): Promise<void> {
   const raw = JSON.parse(readFileSync(messagesPath, 'utf8')) as RawMessage[];
 
   const devicesRaw = await prisma.device.findMany({
-    select: { id: true, readingTypes: true, alertThresholds: true },
+    select: { id: true, company: true, readingTypes: true, alertThresholds: true },
   });
   if (devicesRaw.length === 0) {
     throw new Error('No devices in the DB — run `npm run seed` before ingest.');
   }
-  // Two views of the same registry: what the validator needs, and thresholds.
   const deviceInfo = new Map<string, DeviceInfo>(
     devicesRaw.map((d) => [d.id, { readingTypes: d.readingTypes }]),
   );
   const thresholdsByDevice = new Map<string, Record<string, number>>(
     devicesRaw.map((d) => [d.id, d.alertThresholds as Record<string, number>]),
   );
+  const companyByDevice = new Map<string, string>(devicesRaw.map((d) => [d.id, d.company]));
 
   // Idempotency: clear the previous run's dead-letter rows.
   await prisma.rejectedMessage.deleteMany({});
@@ -61,9 +63,12 @@ export async function runIngest(): Promise<void> {
   const readings = valid.filter((v): v is NormalizedReading => v.kind === 'reading');
   const readingResult = await storeReadings(readings, thresholdsByDevice);
 
-  // TODO: later — store alerts + link recoveries to open alerts.
+  // Store alerts + link recoveries to the open alerts they close.
+  const alertMsgs = valid.filter((v): v is NormalizedAlert => v.kind === 'alert');
+  const recoveryMsgs = valid.filter((v): v is NormalizedAlert => v.kind === 'recovery');
+  const alertResult = await storeAlerts(alertMsgs, recoveryMsgs, companyByDevice);
 
-  printSummary(raw.length, valid, rejected, readingResult);
+  printSummary(raw.length, valid, rejected, readingResult, alertResult);
 }
 
 function printSummary(
@@ -71,6 +76,7 @@ function printSummary(
   valid: Normalized[],
   rejected: { reason: string }[],
   readingResult: ReadingStoreResult,
+  alertResult: AlertStoreResult,
 ): void {
   const readings = valid.filter((v) => v.kind === 'reading').length;
   const alerts = valid.filter((v) => v.kind === 'alert').length;
@@ -91,5 +97,8 @@ function printSummary(
   }
   console.log(
     `  readings rows  : stored ${readingResult.stored}, deduped ${readingResult.deduped}, breaches ${readingResult.breaches}`,
+  );
+  console.log(
+    `  alerts         : stored ${alertResult.stored}, recoveries linked ${alertResult.recoveriesLinked}, orphan recoveries ${alertResult.orphanRecoveries}`,
   );
 }
