@@ -13,9 +13,9 @@ import type { AuthedUser } from './auth';
  * Keeping construction separate from listening lets tests
  * use `app.inject()` against an in-memory instance — no real port needed.
  */
-export function buildApp(): FastifyInstance {
+export function buildApp(opts: { logger?: boolean } = {}): FastifyInstance {
   const app = Fastify({
-    logger: true,
+    logger: opts.logger ?? true,
   });
 
   // Allow the browser frontend (different origin) to call the API.

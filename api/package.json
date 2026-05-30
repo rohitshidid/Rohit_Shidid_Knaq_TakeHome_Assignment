@@ -14,6 +14,7 @@
     "db:reset": "prisma migrate reset",
     "seed": "tsx prisma/seed.ts",
     "ingest": "tsx src/ingest/index.ts",
+    "test": "vitest run",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -30,6 +31,7 @@
     "@types/node": "^22.10.0",
     "prisma": "^7.8.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.7"
   }
 }
