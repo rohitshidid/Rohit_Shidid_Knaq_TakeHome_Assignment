@@ -29,3 +29,5 @@ coverage/
 # Prisma 7 generates its client into the repo — ignore it (regenerated via
 # `prisma generate`), but KEEP prisma/migrations tracked.
 api/src/generated/
+
+.claude/

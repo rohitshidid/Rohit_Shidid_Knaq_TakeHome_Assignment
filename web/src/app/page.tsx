@@ -18,8 +18,8 @@ export default function HomePage() {
   return (
     <Container maxWidth="sm" sx={{ py: 6 }}>
       <Stack spacing={2}>
-        <Typography variant="h4" color="primary" sx={{ fontWeight: 700 }}>
-          Knaq — wiring check
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          Wiring check
         </Typography>
 
         {loading && <CircularProgress />}

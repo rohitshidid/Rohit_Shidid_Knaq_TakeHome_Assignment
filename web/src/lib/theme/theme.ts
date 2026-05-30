@@ -1,17 +1,20 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, type Theme } from '@mui/material/styles';
 
 /**
- * Brand palette from the assignment. A single light theme for now; the
- * dark/light toggle is added later.
+ * Brand palette from the assignment, parameterized by light/dark mode.
+ * Gold stays the primary accent; the dark/light toggle swaps backgrounds.
  */
-export const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: { main: '#EFC01A' }, // gold
-    secondary: { main: '#4B8189' }, // teal
-    error: { main: '#F44336' },
-    warning: { main: '#FFA726' },
-    info: { main: '#29B6F6' },
-    success: { main: '#66BB6A' },
-  },
-});
+export function createAppTheme(mode: 'light' | 'dark'): Theme {
+  return createTheme({
+    palette: {
+      mode,
+      primary: { main: '#EFC01A' }, // gold
+      secondary: { main: '#4B8189' }, // teal
+      error: { main: '#F44336' },
+      warning: { main: '#FFA726' },
+      info: { main: '#29B6F6' },
+      success: { main: '#66BB6A' },
+    },
+    shape: { borderRadius: 8 },
+  });
+}
