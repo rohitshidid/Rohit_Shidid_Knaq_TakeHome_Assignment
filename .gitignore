@@ -26,4 +26,6 @@ coverage/
 .idea/
 .vscode/
 
-# Prisma generated client lives in node_modules; migrations stay tracked
+# Prisma 7 generates its client into the repo — ignore it (regenerated via
+# `prisma generate`), but KEEP prisma/migrations tracked.
+api/src/generated/

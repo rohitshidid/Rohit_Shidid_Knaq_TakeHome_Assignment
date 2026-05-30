@@ -1,0 +1,192 @@
+// Knaq backend schema.
+// Prisma 7: the datasource URL lives in prisma.config.ts (not here), and the
+// client is generated to a local ESM folder (output below).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums  (Postgres native enum types)
+// ---------------------------------------------------------------------------
+
+enum DeviceType {
+  elevator
+  escalator
+  compressor
+}
+
+enum AlertStatus {
+  new
+  acknowledged
+  resolved
+  dismissed
+}
+
+enum Severity {
+  warning
+  critical
+}
+
+enum ResolutionType {
+  fixed
+  false_alarm
+  known_issue
+  deferred
+  cannot_reproduce
+}
+
+enum TimelineAction {
+  created
+  acknowledged
+  assigned
+  note
+  resolved
+  dismissed
+  reopened
+  recovered
+}
+
+// ---------------------------------------------------------------------------
+// Device registry  (seeded from data/devices.json)
+// ---------------------------------------------------------------------------
+
+model Device {
+  id              String     @id // device_id, e.g. "ELV-001"
+  type            DeviceType
+  company         String
+  name            String
+  location        String
+  timezone        String // IANA tz, e.g. "America/New_York"
+  floorCount      Int?       @map("floor_count") // elevators only
+  installedDate   DateTime   @map("installed_date") @db.Date
+  readingTypes    String[]   @map("reading_types") // text[]
+  alertThresholds Json       @map("alert_thresholds") // jsonb
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  readings SensorReading[]
+  alerts   Alert[]
+
+  @@index([company])
+  @@map("devices")
+}
+
+// ---------------------------------------------------------------------------
+// Users  (seeded; bearer token resolves to one of these)
+// ---------------------------------------------------------------------------
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  role      String
+  company   String
+  token     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  assignedAlerts Alert[] @relation("AssignedAlerts")
+
+  @@index([company])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Raw signal — one row per metric per reading message (append-only)
+// ---------------------------------------------------------------------------
+
+model SensorReading {
+  id          String   @id @default(cuid())
+  device      Device   @relation(fields: [deviceId], references: [id])
+  deviceId    String   @map("device_id")
+  metric      String // current | frequency | temperature | motor_status
+  value       Float
+  tsUtc       DateTime @map("ts_utc") // stored UTC
+  isBreach    Boolean  @default(false) @map("is_breach")
+  breachBound String?  @map("breach_bound") // "high" | "low"
+  breachLimit Float?   @map("breach_limit") // threshold value crossed
+  contentHash String   @unique @map("content_hash") // dedup key
+  ingestedAt  DateTime @default(now()) @map("ingested_at")
+
+  @@index([deviceId, metric, tsUtc])
+  @@index([deviceId, tsUtc])
+  @@map("sensor_readings")
+}
+
+// ---------------------------------------------------------------------------
+// Alert — ingested device alert + the inline triage workflow state (1:1)
+// ---------------------------------------------------------------------------
+
+model Alert {
+  id           String    @id @default(cuid())
+  device       Device    @relation(fields: [deviceId], references: [id])
+  deviceId     String    @map("device_id")
+  company      String // denormalized from device for fast company scoping
+  alertType    String    @map("alert_type")
+  severity     Severity
+  threshold    Float?
+  readingValue Float?    @map("reading_value")
+  readingName  String?   @map("reading_name")
+  triggeredAt  DateTime  @map("triggered_at") // from message timestamp (UTC)
+  recoveredAt  DateTime? @map("recovered_at") // set when a matching recovery is ingested
+
+  // --- triage workflow (inline; every alert has exactly one) ---
+  status                       AlertStatus     @default(new)
+  assignedTo                   User?           @relation("AssignedAlerts", fields: [assignedToId], references: [id])
+  assignedToId                 String?         @map("assigned_to_id")
+  acknowledgedAt               DateTime?       @map("acknowledged_at")
+  resolvedAt                   DateTime?       @map("resolved_at")
+  resolutionType               ResolutionType? @map("resolution_type")
+  resolutionRootCause          String?         @map("resolution_root_cause")
+  resolutionActionTaken        String?         @map("resolution_action_taken")
+  resolutionPreventiveMeasures String?         @map("resolution_preventive_measures")
+  resolutionTimeSpentMinutes   Int?            @map("resolution_time_spent_minutes")
+
+  contentHash String   @unique @map("content_hash") // dedup key
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  timeline AlertTimeline[]
+
+  @@index([company, status])
+  @@index([deviceId])
+  @@index([assignedToId])
+  @@map("alerts")
+}
+
+// ---------------------------------------------------------------------------
+// Audit trail — ordered events per alert (1:many)
+// ---------------------------------------------------------------------------
+
+model AlertTimeline {
+  id        String         @id @default(cuid())
+  alert     Alert          @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  alertId   String         @map("alert_id")
+  timestamp DateTime       @default(now())
+  action    TimelineAction
+  userName  String?        @map("user_name") // null for system events (created/recovered)
+  note      String?
+  details   Json? // structured extras, e.g. { "from": "new", "to": "acknowledged" }
+
+  @@index([alertId, timestamp])
+  @@map("alert_timeline")
+}
+
+// ---------------------------------------------------------------------------
+// Dead-letter — malformed messages, logged not dropped
+// ---------------------------------------------------------------------------
+
+model RejectedMessage {
+  id          String   @id @default(cuid())
+  raw         Json // the original message, verbatim
+  reason      String // why it was rejected
+  messageType String?  @map("message_type") // best-effort classification
+  deviceId    String?  @map("device_id") // best-effort
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([reason])
+  @@map("rejected_messages")
+}
