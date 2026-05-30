@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import MuiAlert from '@mui/material/Alert';
@@ -7,6 +8,7 @@ import Button from '@mui/material/Button';
 import Skeleton from '@mui/material/Skeleton';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
+import Snackbar from '@mui/material/Snackbar';
 import { useGetAlertsQuery } from '@/lib/api/apiSlice';
 import { AlertTable } from '@/features/alerts/components/AlertTable';
 import { SummaryBar } from '@/features/alerts/components/SummaryBar';
@@ -26,6 +28,7 @@ function EmptyPaper({ title, body }: { title: string; body: string }) {
 
 export default function AlertsPage() {
   const { data, isLoading, isError, refetch } = useGetAlertsQuery();
+  const [error, setError] = useState<string | null>(null);
   const all = data ?? [];
   const filtered = useFilteredAlerts(all);
 
@@ -70,11 +73,22 @@ export default function AlertsPage() {
               <Typography variant="body2" color="text.secondary">
                 Showing {filtered.length} of {all.length}
               </Typography>
-              <AlertTable alerts={filtered} />
+              <AlertTable alerts={filtered} onError={setError} />
             </>
           )}
         </>
       )}
+
+      <Snackbar
+        open={Boolean(error)}
+        autoHideDuration={5000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <MuiAlert severity="error" variant="filled" onClose={() => setError(null)} sx={{ width: '100%' }}>
+          {error}
+        </MuiAlert>
+      </Snackbar>
     </Stack>
   );
 }

@@ -13,8 +13,15 @@ import type { Alert } from '@/features/alerts/types';
 import { titleForAlert, relativeTime, initials } from '@/features/alerts/lib/format';
 import { SeverityChip } from './SeverityChip';
 import { StatusBadge } from './StatusBadge';
+import { AlertRowActions } from './AlertRowActions';
 
-export function AlertTable({ alerts }: { alerts: Alert[] }) {
+export function AlertTable({
+  alerts,
+  onError,
+}: {
+  alerts: Alert[];
+  onError: (message: string) => void;
+}) {
   return (
     <TableContainer component={Paper} variant="outlined">
       <Table size="small" aria-label="alert queue">
@@ -26,6 +33,7 @@ export function AlertTable({ alerts }: { alerts: Alert[] }) {
             <TableCell>Triggered</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Assignee</TableCell>
+            <TableCell align="right">Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -66,6 +74,9 @@ export function AlertTable({ alerts }: { alerts: Alert[] }) {
                     Unassigned
                   </Typography>
                 )}
+              </TableCell>
+              <TableCell align="right">
+                <AlertRowActions alert={a} onError={onError} />
               </TableCell>
             </TableRow>
           ))}
