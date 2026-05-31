@@ -9,11 +9,20 @@ import Skeleton from '@mui/material/Skeleton';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
 import Snackbar from '@mui/material/Snackbar';
-import { useGetAlertsQuery } from '@/lib/api/apiSlice';
-import { isAuthError } from '@/lib/api/error';
+import {
+  useGetAlertsQuery,
+  useBulkAcknowledgeMutation,
+  useBulkAssignMutation,
+  type BulkResult,
+} from '@/lib/api/apiSlice';
+import { apiErrorMessage, isAuthError } from '@/lib/api/error';
+import { useAppDispatch, useAppSelector } from '@/lib/store/hooks';
+import { clear } from '@/features/alerts/slices/selectionSlice';
 import { AlertTable } from '@/features/alerts/components/AlertTable';
 import { SummaryBar } from '@/features/alerts/components/SummaryBar';
 import { QueueFilters } from '@/features/alerts/components/QueueFilters';
+import { BulkActionBar } from '@/features/alerts/components/BulkActionBar';
+import { AssignDialog } from '@/features/alerts/components/AssignDialog';
 import { useFilteredAlerts } from '@/features/alerts/hooks/useFilteredAlerts';
 import { ResetButton } from '@/features/dev/components/ResetButton';
 
@@ -28,11 +37,33 @@ function EmptyPaper({ title, body }: { title: string; body: string }) {
   );
 }
 
+function summarize(res: BulkResult, verb: string): string {
+  const ok = res.succeeded.length;
+  return res.failed.length === 0 ? `${verb} ${ok}` : `${verb} ${ok}, skipped ${res.failed.length}`;
+}
+
 export default function AlertsPage() {
   const { data, isLoading, isError, error: queryError, refetch } = useGetAlertsQuery();
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const all = data ?? [];
   const filtered = useFilteredAlerts(all);
+
+  const dispatch = useAppDispatch();
+  const selectedIds = useAppSelector((s) => s.alertSelection.ids);
+  const [bulkAck, { isLoading: bulkAcking }] = useBulkAcknowledgeMutation();
+  const [bulkAssign] = useBulkAssignMutation();
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+
+  const doBulkAck = async () => {
+    try {
+      const res = await bulkAck({ ids: selectedIds }).unwrap();
+      setInfo(summarize(res, 'Acknowledged'));
+      dispatch(clear());
+    } catch (e) {
+      setError(apiErrorMessage(e));
+    }
+  };
 
   return (
     <Stack spacing={2}>
@@ -74,6 +105,16 @@ export default function AlertsPage() {
           <SummaryBar alerts={all} />
           <QueueFilters />
 
+          {selectedIds.length > 0 && (
+            <BulkActionBar
+              count={selectedIds.length}
+              busy={bulkAcking}
+              onAcknowledge={doBulkAck}
+              onAssign={() => setBulkAssignOpen(true)}
+              onClear={() => dispatch(clear())}
+            />
+          )}
+
           {all.length === 0 ? (
             <EmptyPaper title="No alerts" body="Nothing is alerting for your company right now." />
           ) : filtered.length === 0 ? (
@@ -89,6 +130,18 @@ export default function AlertsPage() {
         </>
       )}
 
+      <AssignDialog
+        open={bulkAssignOpen}
+        onClose={() => setBulkAssignOpen(false)}
+        onError={setError}
+        title={`Assign ${selectedIds.length} alert${selectedIds.length === 1 ? '' : 's'}`}
+        onSubmit={async (assigneeId, note) => {
+          const res = await bulkAssign({ ids: selectedIds, assignee_id: assigneeId, note }).unwrap();
+          setInfo(summarize(res, 'Assigned'));
+          dispatch(clear());
+        }}
+      />
+
       <Snackbar
         open={Boolean(error)}
         autoHideDuration={5000}
@@ -97,6 +150,17 @@ export default function AlertsPage() {
       >
         <MuiAlert severity="error" variant="filled" onClose={() => setError(null)} sx={{ width: '100%' }}>
           {error}
+        </MuiAlert>
+      </Snackbar>
+
+      <Snackbar
+        open={Boolean(info)}
+        autoHideDuration={4000}
+        onClose={() => setInfo(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <MuiAlert severity="info" variant="filled" onClose={() => setInfo(null)} sx={{ width: '100%' }}>
+          {info}
         </MuiAlert>
       </Snackbar>
     </Stack>

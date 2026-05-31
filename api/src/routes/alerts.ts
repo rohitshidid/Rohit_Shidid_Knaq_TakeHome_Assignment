@@ -48,6 +48,18 @@ const resolveBody = z.object({
   time_spent_minutes: z.number().int().nonnegative().optional(),
 });
 const noteBody = z.object({ note: z.string().min(1) });
+const bulkAckBody = z.object({ ids: z.array(z.string().min(1)).min(1).max(500) });
+const bulkAssignBody = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(500),
+  assignee_id: z.string().min(1),
+  note: z.string().optional(),
+});
+
+interface BulkResult {
+  requested: number;
+  succeeded: string[];
+  failed: { id: string; code: string; message: string }[];
+}
 
 function zodMsg(err: z.ZodError): string {
   return err.issues.map((i) => `${i.path.join('.') || '(body)'}: ${i.message}`).join('; ');
@@ -148,5 +160,49 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
     const body = noteBody.safeParse(request.body);
     if (!body.success) throw new AppError(400, 'bad_request', zodMsg(body.error));
     return addNote(id, request.user, body.data.note);
+  });
+
+  // --- Bulk mutations: apply per item, report partial success (200) ---
+
+  app.post('/alerts/bulk/acknowledge', { preHandler: authenticate }, async (request): Promise<BulkResult> => {
+    const body = bulkAckBody.safeParse(request.body);
+    if (!body.success) throw new AppError(400, 'bad_request', zodMsg(body.error));
+
+    const succeeded: string[] = [];
+    const failed: BulkResult['failed'] = [];
+    for (const id of body.data.ids) {
+      try {
+        await acknowledgeAlert(id, request.user);
+        succeeded.push(id);
+      } catch (e) {
+        if (e instanceof AppError) failed.push({ id, code: e.code, message: e.message });
+        else throw e;
+      }
+    }
+    return { requested: body.data.ids.length, succeeded, failed };
+  });
+
+  app.post('/alerts/bulk/assign', { preHandler: authenticate }, async (request): Promise<BulkResult> => {
+    const body = bulkAssignBody.safeParse(request.body);
+    if (!body.success) throw new AppError(400, 'bad_request', zodMsg(body.error));
+
+    // Validate the (shared) assignee once for a clean error.
+    const assignee = await prisma.user.findFirst({
+      where: { id: body.data.assignee_id, company: request.user.company },
+    });
+    if (!assignee) throw new AppError(400, 'bad_request', 'assignee_id is not a user in your company');
+
+    const succeeded: string[] = [];
+    const failed: BulkResult['failed'] = [];
+    for (const id of body.data.ids) {
+      try {
+        await assignAlert(id, request.user, { assigneeId: body.data.assignee_id, note: body.data.note });
+        succeeded.push(id);
+      } catch (e) {
+        if (e instanceof AppError) failed.push({ id, code: e.code, message: e.message });
+        else throw e;
+      }
+    }
+    return { requested: body.data.ids.length, succeeded, failed };
   });
 }

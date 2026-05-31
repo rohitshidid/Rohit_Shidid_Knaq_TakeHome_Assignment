@@ -1,3 +1,5 @@
+'use client';
+
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -9,8 +11,11 @@ import Avatar from '@mui/material/Avatar';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
+import Checkbox from '@mui/material/Checkbox';
 import type { Alert } from '@/features/alerts/types';
 import { titleForAlert, relativeTime, initials } from '@/features/alerts/lib/format';
+import { useAppDispatch, useAppSelector } from '@/lib/store/hooks';
+import { toggleOne, setMany } from '@/features/alerts/slices/selectionSlice';
 import { SeverityChip } from './SeverityChip';
 import { StatusBadge } from './StatusBadge';
 import { AlertRowActions } from './AlertRowActions';
@@ -22,11 +27,36 @@ export function AlertTable({
   alerts: Alert[];
   onError: (message: string) => void;
 }) {
+  const dispatch = useAppDispatch();
+  const selectedIds = useAppSelector((s) => s.alertSelection.ids);
+  const selected = new Set(selectedIds);
+
+  const visibleIds = alerts.map((a) => a.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+  const someVisibleSelected = visibleIds.some((id) => selected.has(id));
+
+  const toggleAll = () => {
+    if (allVisibleSelected) {
+      const visible = new Set(visibleIds);
+      dispatch(setMany(selectedIds.filter((id) => !visible.has(id))));
+    } else {
+      dispatch(setMany([...new Set([...selectedIds, ...visibleIds])]));
+    }
+  };
+
   return (
     <TableContainer component={Paper} variant="outlined">
       <Table size="small" aria-label="alert queue">
         <TableHead>
           <TableRow>
+            <TableCell padding="checkbox">
+              <Checkbox
+                checked={allVisibleSelected}
+                indeterminate={someVisibleSelected && !allVisibleSelected}
+                onChange={toggleAll}
+                aria-label="select all"
+              />
+            </TableCell>
             <TableCell>Severity</TableCell>
             <TableCell>Alert</TableCell>
             <TableCell>Device</TableCell>
@@ -38,7 +68,14 @@ export function AlertTable({
         </TableHead>
         <TableBody>
           {alerts.map((a) => (
-            <TableRow key={a.id} hover>
+            <TableRow key={a.id} hover selected={selected.has(a.id)}>
+              <TableCell padding="checkbox">
+                <Checkbox
+                  checked={selected.has(a.id)}
+                  onChange={() => dispatch(toggleOne(a.id))}
+                  aria-label={`select ${a.id}`}
+                />
+              </TableCell>
               <TableCell>
                 <SeverityChip severity={a.severity} />
               </TableCell>

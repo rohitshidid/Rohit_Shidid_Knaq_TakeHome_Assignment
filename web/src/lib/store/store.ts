@@ -1,12 +1,14 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { api } from '@/lib/api/apiSlice';
 import alertFilters from '@/features/alerts/slices/filtersSlice';
+import alertSelection from '@/features/alerts/slices/selectionSlice';
 import auth from '@/features/auth/authSlice';
 
 export const store = configureStore({
   reducer: {
     [api.reducerPath]: api.reducer,
     alertFilters,
+    alertSelection,
     auth,
   },
   // RTK Query needs its middleware for caching, invalidation, polling, etc.

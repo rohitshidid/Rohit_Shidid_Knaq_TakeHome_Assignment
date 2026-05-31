@@ -17,41 +17,47 @@ import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { useGetUsersQuery, useAssignAlertMutation } from '@/lib/api/apiSlice';
+import { useGetUsersQuery } from '@/lib/api/apiSlice';
 import { apiErrorMessage } from '@/lib/api/error';
 import { initials } from '@/features/alerts/lib/format';
-import type { Alert } from '@/features/alerts/types';
 
+/**
+ * Reusable assign dialog. The parent supplies `onSubmit`, so the same UI drives a
+ * single-alert assign or a bulk assign.
+ */
 export function AssignDialog({
-  alert,
   open,
   onClose,
+  currentAssigneeId,
+  onSubmit,
   onError,
+  title = 'Assign alert',
 }: {
-  alert: Alert;
   open: boolean;
   onClose: () => void;
+  currentAssigneeId?: string | null;
+  onSubmit: (assigneeId: string, note?: string) => Promise<void>;
   onError: (message: string) => void;
+  title?: string;
 }) {
   const { data: users } = useGetUsersQuery();
-  const [assign, { isLoading }] = useAssignAlertMutation();
   const [search, setSearch] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const formik = useFormik({
-    initialValues: { assignee_id: alert.assignedToId ?? '', note: '' },
+    initialValues: { assignee_id: currentAssigneeId ?? '', note: '' },
     enableReinitialize: true,
     validationSchema: Yup.object({ assignee_id: Yup.string().required() }),
     onSubmit: async (values) => {
+      setSubmitting(true);
       try {
-        await assign({
-          id: alert.id,
-          assignee_id: values.assignee_id,
-          note: values.note.trim() || undefined,
-        }).unwrap();
+        await onSubmit(values.assignee_id, values.note.trim() || undefined);
         onClose();
         formik.resetForm();
       } catch (err) {
         onError(apiErrorMessage(err));
+      } finally {
+        setSubmitting(false);
       }
     },
   });
@@ -62,7 +68,7 @@ export function AssignDialog({
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <form onSubmit={formik.handleSubmit} noValidate>
-        <DialogTitle>Assign alert</DialogTitle>
+        <DialogTitle>{title}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
@@ -82,7 +88,7 @@ export function AssignDialog({
                     <Avatar sx={{ bgcolor: 'secondary.main' }}>{initials(u.name)}</Avatar>
                   </ListItemAvatar>
                   <ListItemText primary={u.name} secondary={u.role} />
-                  {alert.assignedToId === u.id && <Chip size="small" label="current" />}
+                  {currentAssigneeId === u.id && <Chip size="small" label="current" />}
                 </ListItemButton>
               ))}
               {filtered.length === 0 && (
@@ -102,7 +108,7 @@ export function AssignDialog({
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="contained" disabled={!formik.values.assignee_id || isLoading}>
+          <Button type="submit" variant="contained" disabled={!formik.values.assignee_id || submitting}>
             Assign
           </Button>
         </DialogActions>

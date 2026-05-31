@@ -22,12 +22,14 @@ import { AssignDialog } from './AssignDialog';
 import { AddNoteForm } from './AddNoteForm';
 import { titleForAlert, relativeTime, initials } from '@/features/alerts/lib/format';
 import type { Alert } from '@/features/alerts/types';
+import { useAssignAlertMutation } from '@/lib/api/apiSlice';
 
 export function AlertDetailView({ alert }: { alert: Alert }) {
   const hasReading = alert.readingValue !== null && alert.threshold !== null;
   const [assignOpen, setAssignOpen] = useState(false);
   const [resolveOpen, setResolveOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [assign] = useAssignAlertMutation();
 
   return (
     <Stack spacing={2}>
@@ -137,7 +139,15 @@ export function AlertDetailView({ alert }: { alert: Alert }) {
         </CardContent>
       </Card>
 
-      <AssignDialog alert={alert} open={assignOpen} onClose={() => setAssignOpen(false)} onError={setError} />
+      <AssignDialog
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        currentAssigneeId={alert.assignedToId}
+        onError={setError}
+        onSubmit={async (assigneeId, note) => {
+          await assign({ id: alert.id, assignee_id: assigneeId, note }).unwrap();
+        }}
+      />
       <ResolveDialog alertId={alert.id} open={resolveOpen} onClose={() => setResolveOpen(false)} onError={setError} />
 
       <Snackbar
