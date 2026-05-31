@@ -28,7 +28,8 @@ The tables:
   queries don't have to join through `devices` on every request.
 - `alert_timeline`: the audit log, one row per event, ordered by timestamp. It's
   append-only and one-to-many, so it lives on its own.
-- `rejected_messages`: a dead-letter table for malformed input (see below).
+- `rejected_messages`: a dead-letter table for malformed input (see below). 
+- To view the tables go to api folder `cd api` and run `npm run db:studio`
 
 I picked Postgres over SQLite partly because the Docker setup wanted a real,
 separate DB service anyway, and over MongoDB because the triage side is relational
