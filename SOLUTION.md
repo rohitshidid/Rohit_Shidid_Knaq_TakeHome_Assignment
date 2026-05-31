@@ -191,6 +191,11 @@ ECharts powers the analytics charts — I used `echarts` directly with a small
 wrapper rather than `echarts-for-react`, to dodge a React 19 peer-dependency
 conflict. Tests: Vitest, plus React Testing Library on the web side.
 
+ - A recovery records the timestamp but keeps the human triage, if a device breaks, alerts, and then fixes itself ten minutes later, it sends a recovery message. I record when that happened and add a note to the timeline, but I don't auto-close the ticket. The machine being fine and the work being done are two different things — someone still has to look at why it broke. So the alert stays open until a human resolves it; the recovery is just context that says the device already cleared on its own.
+
+ - Auth is a plain bearer token that maps to a seeded user (tok_alice_brookfield, and so on), not a full JWT login system. The assignment didn't ask for a login screen, and the spec explicitly allows a simple lookup. Readable tokens are easy to curl and easy to reason about, and they let me prove the auth and multi-tenant scoping work without spending hours on a sign-in flow I was told I didn't need.
+
+ - Hard reset (testing) - There's a red "Hard reset" button on the queue page, disabled in production. It calls POST /dev/reset (which I wrote but only expose in dev), wipes the DB, and re-runs the seed → ingest pipeline. Use it if you want to clear the board and see the same ~25 alerts come in fresh. It won't touch your Docker volume, so if you want to clear persistent state too you'll need a `docker compose down -v`.
 
 ## AI tool disclosure
 
@@ -199,12 +204,3 @@ I used Claude code to build this project, I used it for initial boiler plate, de
 
 ## Miscellaneous notes
 - I have created a homebrew tap which is available at: https://github.com/rohitshidid/Homebrew-portman, it basically helps you see all active ports on your machine in one screen, it helps quite a lot when you are working with docker and/or kubernetes, helped me track progress as I was developing this application especially the docker part. (You can also use `brew install portmap` to install it)
-
-## Some more notes
-
- - A recovery records the timestamp but keeps the human triage, if a device breaks, alerts, and then fixes itself ten minutes later, it sends a recovery message. I record when that happened and add a note to the timeline, but I don't auto-close the ticket. The machine being fine and the work being done are two different things — someone still has to look at why it broke. So the alert stays open until a human resolves it; the recovery is just context that says the device already cleared on its own.
-
- - Auth is a plain bearer token that maps to a seeded user (tok_alice_brookfield, and so on), not a full JWT login system. The assignment didn't ask for a login screen, and the spec explicitly allows a simple lookup. Readable tokens are easy to curl and easy to reason about, and they let me prove the auth and multi-tenant scoping work without spending hours on a sign-in flow I was told I didn't need.
-
- - Hard reset (testing) - There's a red "Hard reset" button on the queue page, disabled in production. It calls POST /dev/reset (which I wrote but only expose in dev), wipes the DB, and re-runs the seed → ingest pipeline. Use it if you want to clear the board and see the same ~25 alerts come in fresh. It won't touch your Docker volume, so if you want to clear persistent state too you'll need a `docker compose down -v`.
-
