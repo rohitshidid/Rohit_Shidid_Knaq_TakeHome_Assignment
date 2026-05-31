@@ -4,7 +4,7 @@ import { authenticate } from '../auth';
 import { AppError } from '../errors';
 import { Prisma } from '../generated/prisma/client';
 import { z } from 'zod';
-import { acknowledgeAlert, assignAlert, resolveAlert, addNote } from '../services/triage';
+import { acknowledgeAlert, assignAlert, resolveAlert, addNote, dismissAlert, reopenAlert } from '../services/triage';
 
 const SEVERITIES = ['warning', 'critical'] as const;
 const STATUSES = ['new', 'acknowledged', 'resolved', 'dismissed'] as const;
@@ -48,6 +48,7 @@ const resolveBody = z.object({
   time_spent_minutes: z.number().int().nonnegative().optional(),
 });
 const noteBody = z.object({ note: z.string().min(1) });
+const optionalNoteBody = z.object({ note: z.string().optional() });
 const bulkAckBody = z.object({ ids: z.array(z.string().min(1)).min(1).max(500) });
 const bulkAssignBody = z.object({
   ids: z.array(z.string().min(1)).min(1).max(500),
@@ -160,6 +161,20 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
     const body = noteBody.safeParse(request.body);
     if (!body.success) throw new AppError(400, 'bad_request', zodMsg(body.error));
     return addNote(id, request.user, body.data.note);
+  });
+
+  app.post('/alerts/:id/dismiss', { preHandler: authenticate }, async (request) => {
+    const { id } = request.params as { id: string };
+    const body = optionalNoteBody.safeParse(request.body ?? {});
+    if (!body.success) throw new AppError(400, 'bad_request', zodMsg(body.error));
+    return dismissAlert(id, request.user, body.data.note);
+  });
+
+  app.post('/alerts/:id/reopen', { preHandler: authenticate }, async (request) => {
+    const { id } = request.params as { id: string };
+    const body = optionalNoteBody.safeParse(request.body ?? {});
+    if (!body.success) throw new AppError(400, 'bad_request', zodMsg(body.error));
+    return reopenAlert(id, request.user, body.data.note);
   });
 
   // --- Bulk mutations: apply per item, report partial success (200) ---

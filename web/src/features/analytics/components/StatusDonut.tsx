@@ -24,6 +24,7 @@ export function StatusDonut({ byStatus }: { byStatus: AlertStats['byStatus'] }) 
             { value: byStatus.new, name: 'New', itemStyle: { color: theme.palette.info.main } },
             { value: byStatus.acknowledged, name: 'Acknowledged', itemStyle: { color: theme.palette.warning.main } },
             { value: byStatus.resolved, name: 'Resolved', itemStyle: { color: theme.palette.success.main } },
+            { value: byStatus.dismissed, name: 'Dismissed', itemStyle: { color: theme.palette.grey[500] } },
           ],
         },
       ],

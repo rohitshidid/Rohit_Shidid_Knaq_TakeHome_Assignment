@@ -6,13 +6,19 @@ import CircularProgress from '@mui/material/CircularProgress';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
-import { useAcknowledgeAlertMutation } from '@/lib/api/apiSlice';
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
+import ReplayIcon from '@mui/icons-material/Replay';
+import {
+  useAcknowledgeAlertMutation,
+  useDismissAlertMutation,
+  useReopenAlertMutation,
+} from '@/lib/api/apiSlice';
 import { apiErrorMessage } from '@/lib/api/error';
 import type { Alert } from '@/features/alerts/types';
 
 /**
  * Renders the actions allowed in the current status (the server still enforces
- * the rules; this just shows the right buttons). Resolved/dismissed = read-only.
+ * the rules). new/acknowledged → act + dismiss; resolved/dismissed → reopen.
  */
 export function AlertActions({
   alert,
@@ -25,28 +31,41 @@ export function AlertActions({
   onResolve: () => void;
   onError: (message: string) => void;
 }) {
-  const [acknowledge, { isLoading }] = useAcknowledgeAlertMutation();
+  const [acknowledge, { isLoading: acking }] = useAcknowledgeAlertMutation();
+  const [dismiss, { isLoading: dismissing }] = useDismissAlertMutation();
+  const [reopen, { isLoading: reopening }] = useReopenAlertMutation();
 
-  if (alert.status === 'resolved' || alert.status === 'dismissed') {
-    return null; // terminal — read-only
-  }
-
-  const handleAck = async () => {
+  const run = async (fn: () => Promise<unknown>) => {
     try {
-      await acknowledge(alert.id).unwrap();
+      await fn();
     } catch (err) {
       onError(apiErrorMessage(err));
     }
   };
+
+  if (alert.status === 'resolved' || alert.status === 'dismissed') {
+    return (
+      <Stack direction="row" spacing={1}>
+        <Button
+          variant="outlined"
+          disabled={reopening}
+          startIcon={<ReplayIcon />}
+          onClick={() => run(() => reopen(alert.id).unwrap())}
+        >
+          Reopen
+        </Button>
+      </Stack>
+    );
+  }
 
   return (
     <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
       {alert.status === 'new' && (
         <Button
           variant="contained"
-          disabled={isLoading}
-          onClick={handleAck}
-          startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <VisibilityOutlinedIcon />}
+          disabled={acking}
+          onClick={() => run(() => acknowledge(alert.id).unwrap())}
+          startIcon={acking ? <CircularProgress size={16} color="inherit" /> : <VisibilityOutlinedIcon />}
         >
           Acknowledge
         </Button>
@@ -58,6 +77,15 @@ export function AlertActions({
       )}
       <Button variant="outlined" onClick={onAssign} startIcon={<PersonAddAltOutlinedIcon />}>
         Assign
+      </Button>
+      <Button
+        variant="text"
+        color="inherit"
+        disabled={dismissing}
+        startIcon={<CancelOutlinedIcon />}
+        onClick={() => run(() => dismiss(alert.id).unwrap())}
+      >
+        Dismiss
       </Button>
     </Stack>
   );

@@ -95,6 +95,14 @@ export const api = createApi({
       query: ({ id, note }) => ({ url: `/alerts/${id}/notes`, method: 'POST', body: { note } }),
       invalidatesTags: (_r, _e, { id }) => [{ type: 'Alert', id }, { type: 'Alert', id: 'LIST' }],
     }),
+    dismissAlert: build.mutation<Alert, string>({
+      query: (id) => ({ url: `/alerts/${id}/dismiss`, method: 'POST' }),
+      invalidatesTags: (_r, _e, id) => [{ type: 'Alert', id }, { type: 'Alert', id: 'LIST' }],
+    }),
+    reopenAlert: build.mutation<Alert, string>({
+      query: (id) => ({ url: `/alerts/${id}/reopen`, method: 'POST' }),
+      invalidatesTags: (_r, _e, id) => [{ type: 'Alert', id }, { type: 'Alert', id: 'LIST' }],
+    }),
 
     bulkAcknowledge: build.mutation<BulkResult, BulkArgs>({
       query: (body) => ({ url: '/alerts/bulk/acknowledge', method: 'POST', body }),
@@ -129,6 +137,8 @@ export const {
   useAssignAlertMutation,
   useResolveAlertMutation,
   useAddNoteMutation,
+  useDismissAlertMutation,
+  useReopenAlertMutation,
   useBulkAcknowledgeMutation,
   useBulkAssignMutation,
   useResetDatabaseMutation,

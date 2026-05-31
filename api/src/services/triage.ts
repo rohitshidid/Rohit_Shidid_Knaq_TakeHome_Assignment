@@ -129,3 +129,51 @@ export async function addNote(id: string, user: AuthedUser, note: string): Promi
     });
   });
 }
+
+export async function dismissAlert(id: string, user: AuthedUser, note?: string): Promise<AlertDetail> {
+  return prisma.$transaction(async (tx) => {
+    const alert = await tx.alert.findFirst({ where: { id, company: user.company } });
+    if (!alert) throw new AppError(404, 'not_found', `Alert '${id}' not found`);
+    if (alert.status !== 'new' && alert.status !== 'acknowledged') {
+      conflict(`Cannot dismiss an alert in status '${alert.status}'`);
+    }
+
+    const now = new Date();
+    return tx.alert.update({
+      where: { id },
+      data: {
+        status: 'dismissed',
+        timeline: { create: { action: 'dismissed', userName: user.name, timestamp: now, note: note ?? null } },
+      },
+      include: alertDetailInclude,
+    });
+  });
+}
+
+export async function reopenAlert(id: string, user: AuthedUser, note?: string): Promise<AlertDetail> {
+  return prisma.$transaction(async (tx) => {
+    const alert = await tx.alert.findFirst({ where: { id, company: user.company } });
+    if (!alert) throw new AppError(404, 'not_found', `Alert '${id}' not found`);
+    if (alert.status !== 'resolved' && alert.status !== 'dismissed') {
+      conflict(`Cannot reopen an alert in status '${alert.status}'`);
+    }
+
+    // Reopening returns the alert to `acknowledged` and clears the stale resolution.
+    const now = new Date();
+    return tx.alert.update({
+      where: { id },
+      data: {
+        status: 'acknowledged',
+        acknowledgedAt: now,
+        resolvedAt: null,
+        resolutionType: null,
+        resolutionRootCause: null,
+        resolutionActionTaken: null,
+        resolutionPreventiveMeasures: null,
+        resolutionTimeSpentMinutes: null,
+        timeline: { create: { action: 'reopened', userName: user.name, timestamp: now, note: note ?? null } },
+      },
+      include: alertDetailInclude,
+    });
+  });
+}

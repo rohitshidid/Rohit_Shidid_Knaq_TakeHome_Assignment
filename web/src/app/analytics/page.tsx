@@ -56,7 +56,7 @@ export default function AnalyticsPage() {
             trend={stats.data.resolvedThisWeek - stats.data.resolvedLastWeek}
             sub="vs last week"
           />
-          <MetricCard label="Resolved" value={String(stats.data.byStatus.resolved)} sub="total" />
+          <MetricCard label="Dismissal rate" value={`${Math.round(stats.data.dismissalRate * 100)}%`} />
         </Stack>
       ) : (
         <Skeleton variant="rounded" height={100} />
